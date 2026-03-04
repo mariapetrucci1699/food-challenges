@@ -9,6 +9,12 @@ type ChallengeRow = {
   name: string;
   time_limit_minutes: number | null;
   status: string;
+
+  // legacy columns (if they still exist in your table)
+  city_text?: string | null;
+  country_text?: string | null;
+
+  // joined objects
   city: null | {
     id: string;
     name: string;
@@ -22,9 +28,18 @@ type ChallengeRow = {
 export default async function ChallengesPage({
   searchParams,
 }: {
-  searchParams?: { countryId?: string; cityId?: string; maxTime?: string };
+  searchParams:
+    | { countryId?: string; cityId?: string; maxTime?: string }
+    | Promise<{ countryId?: string; cityId?: string; maxTime?: string }>;
 }) {
-  // --- 1) Load countries for the dropdown ---
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+
+  const countryId = resolvedSearchParams?.countryId?.trim() || "";
+  const cityId = resolvedSearchParams?.cityId?.trim() || "";
+  const maxTimeRaw = resolvedSearchParams?.maxTime?.trim() || "";
+  const maxTime = maxTimeRaw ? Number(maxTimeRaw) : null;
+
+  // 1) Load countries for the dropdown
   const { data: countries, error: countriesError } = await supabase
     .from("countries")
     .select("id, name")
@@ -42,12 +57,33 @@ export default async function ChallengesPage({
     );
   }
 
-  const countryId = searchParams?.countryId?.trim() || "";
-  const cityId = searchParams?.cityId?.trim() || "";
-  const maxTimeRaw = searchParams?.maxTime?.trim() || "";
-  const maxTime = maxTimeRaw ? Number(maxTimeRaw) : null;
+  const safeCountries = (countries ?? []) as CountryOption[];
 
-  // --- 2) Query challenges with joins (city + country) ---
+  // 2) If user selected only a COUNTRY (no specific city), convert countryId -> cityIds
+  let cityIdsForCountry: string[] | null = null;
+
+  if (!cityId && countryId) {
+    const { data: cityRows, error: cityErr } = await supabase
+      .from("cities")
+      .select("id")
+      .eq("country_id", countryId);
+
+    if (cityErr) {
+      return (
+        <main className="min-h-screen p-8">
+          <h1 className="text-3xl font-bold mb-4">Challenges</h1>
+          <p className="text-red-600">Error loading cities for country filter:</p>
+          <pre className="mt-2 text-sm whitespace-pre-wrap">
+            {cityErr.message}
+          </pre>
+        </main>
+      );
+    }
+
+    cityIdsForCountry = (cityRows ?? []).map((r) => r.id);
+  }
+
+  // 3) Build ONE stable query with stable joins (always the same select)
   let query = supabase
     .from("challenges")
     .select(
@@ -56,10 +92,12 @@ export default async function ChallengesPage({
         name,
         time_limit_minutes,
         status,
-        city:cities (
+        city_text:city,
+        country_text:country,
+        city:cities!challenges_city_id_fkey (
           id,
           name,
-          country:countries (
+          country:countries!cities_country_id_fkey (
             id,
             name
           )
@@ -69,14 +107,24 @@ export default async function ChallengesPage({
     .eq("status", "approved")
     .order("created_at", { ascending: false });
 
-  // Filter by city_id (best, most precise)
+  // Filter by exact city
   if (cityId) {
     query = query.eq("city_id", cityId);
   }
 
-  // Filter by country via joined city (works with the embedded join)
-  if (countryId) {
-    query = query.eq("city.country_id", countryId);
+  // Filter by country (via city IDs)
+  if (!cityId && countryId) {
+    if (!cityIdsForCountry || cityIdsForCountry.length === 0) {
+      // No cities for that country -> no challenges
+      return (
+        <main className="min-h-screen">
+          <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
+          <ChallengeFiltersV2 countries={safeCountries} />
+          <p className="text-gray-600 mt-6">No challenges found for this country.</p>
+        </main>
+      );
+    }
+    query = query.in("city_id", cityIdsForCountry);
   }
 
   // Filter by max time
@@ -97,7 +145,6 @@ export default async function ChallengesPage({
   }
 
   const challenges = (data ?? []) as ChallengeRow[];
-  const safeCountries = (countries ?? []) as CountryOption[];
 
   const selectedCountryName = countryId
     ? safeCountries.find((c) => c.id === countryId)?.name ?? null
@@ -105,69 +152,54 @@ export default async function ChallengesPage({
 
   return (
     <main className="min-h-screen">
-      <div className="flex items-end justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-4xl font-bold">🌍 All Food Challenges</h1>
-          <p className="text-muted-foreground mt-1">
-            Find challenges by location and time limit.
-          </p>
-        </div>
-      </div>
+      <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
 
       <ChallengeFiltersV2 countries={safeCountries} />
 
-      <p className="text-sm text-muted-foreground mb-6">
+      <p className="text-gray-600 mb-6">
+        Filters:{" "}
         {selectedCountryName ? (
           <span className="mr-3">
-            <strong className="text-foreground">Country:</strong>{" "}
-            {selectedCountryName}
+            <strong>Country</strong> = {selectedCountryName}
           </span>
         ) : (
-          <span className="mr-3">
-            <strong className="text-foreground">Country:</strong> Any
-          </span>
+          <span className="mr-3">Country = any</span>
         )}
-
         {cityId ? (
           <span className="mr-3">
-            <strong className="text-foreground">City:</strong> Selected
+            <strong>City</strong> = selected
           </span>
         ) : (
-          <span className="mr-3">
-            <strong className="text-foreground">City:</strong> Any
-          </span>
+          <span className="mr-3">City = any</span>
         )}
-
         {maxTime !== null && !Number.isNaN(maxTime) ? (
           <span>
-            <strong className="text-foreground">Max time:</strong> {maxTime} min
+            <strong>Max time</strong> = {maxTime} min
           </span>
         ) : (
-          <span>
-            <strong className="text-foreground">Max time:</strong> Any
-          </span>
+          <span>Max time = any</span>
         )}
       </p>
 
       {challenges.length === 0 ? (
-        <div className="rounded-xl border bg-background p-6">
-          <p className="font-semibold">No challenges found</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Try clearing filters or selecting a different city.
-          </p>
-        </div>
+        <p className="text-gray-600">No challenges found for these filters.</p>
       ) : (
         <div className="grid gap-6 md:grid-cols-3">
-          {challenges.map((ch) => (
-            <ChallengeCard
-              key={ch.id}
-              id={ch.id}
-              name={ch.name}
-              city={ch.city?.name ?? "Unknown city"}
-              country={ch.city?.country?.name ?? null}
-              timeLimitMinutes={ch.time_limit_minutes}
-            />
-          ))}
+          {challenges.map((ch) => {
+            const cityName = ch.city?.name ?? ch.city_text ?? "Unknown city";
+            const countryName = ch.city?.country?.name ?? ch.country_text ?? null;
+
+            return (
+              <ChallengeCard
+                key={ch.id}
+                id={ch.id}
+                name={ch.name}
+                city={cityName}
+                country={countryName}
+                timeLimitMinutes={ch.time_limit_minutes}
+              />
+            );
+          })}
         </div>
       )}
     </main>

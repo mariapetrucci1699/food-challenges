@@ -39,23 +39,21 @@ export default async function ChallengeDetailPage({
 
   const { data, error } = await supabase
     .from("challenges")
-    .select(
-      `
-        id,
-        name,
-        time_limit_minutes,
-        status,
-        created_at,
-        city:cities (
-          id,
-          name,
-          country:countries (
-            id,
-            name
-          )
-        )
-      `
+    .select(`
+  id,
+  name,
+  time_limit_minutes,
+  status,
+  created_at,
+  city:cities!challenges_city_id_fkey (
+    id,
+    name,
+    country:countries!cities_country_id_fkey (
+      id,
+      name
     )
+  )
+`)
     .eq("id", id)
     .maybeSingle();
 

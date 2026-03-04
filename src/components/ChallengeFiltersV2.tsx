@@ -58,6 +58,7 @@ export default function ChallengeFiltersV2({ countries }: Props) {
 
   function applyFilters(e: React.FormEvent) {
     e.preventDefault();
+    console.log("applyFilters fired");
 
     const params = new URLSearchParams();
     if (countryId) params.set("countryId", countryId);
