@@ -1,19 +1,42 @@
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
 type ChallengeCardProps = {
+  id: string;
   name: string;
   city: string;
-  timeLimit: number;
+  country?: string | null;
+  timeLimitMinutes?: number | null;
 };
 
 export default function ChallengeCard({
+  id,
   name,
   city,
-  timeLimit,
+  country,
+  timeLimitMinutes,
 }: ChallengeCardProps) {
   return (
-    <div className="border p-4 rounded-xl shadow-sm">
-      <h2 className="text-xl font-semibold">{name}</h2>
-      <p className="text-gray-500">{city}</p>
-      <p className="mt-2">⏱ {timeLimit} minutes</p>
-    </div>
+    <Link href={`/challenges/${id}`} className="block">
+      <Card className="transition hover:shadow-md">
+        <CardHeader>
+          <CardTitle className="text-xl">{name}</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {city}
+            {country ? `, ${country}` : ""}
+          </p>
+
+          {typeof timeLimitMinutes === "number" ? (
+            <Badge variant="secondary">⏱ {timeLimitMinutes} min</Badge>
+          ) : (
+            <Badge variant="outline">⏱ No time limit</Badge>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
