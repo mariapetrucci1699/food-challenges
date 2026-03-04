@@ -57,6 +57,33 @@ export default async function ChallengesPage({
     );
   }
 
+  // 1b) Load unique time limits for filter dropdown
+  const { data: timeRows, error: timeError } = await supabase
+    .from("challenges")
+    .select("time_limit_minutes")
+    .eq("status", "approved")
+    .not("time_limit_minutes", "is", null);
+
+  if (timeError) {
+    return (
+      <main className="min-h-screen p-8">
+        <h1 className="text-3xl font-bold mb-4">Challenges</h1>
+        <p className="text-red-600">Error loading time options:</p>
+        <pre className="mt-2 text-sm whitespace-pre-wrap">
+          {timeError.message}
+        </pre>
+      </main>
+    );
+  }
+
+  const maxTimeOptions = Array.from(
+    new Set(
+      (timeRows ?? [])
+        .map((r) => r.time_limit_minutes)
+        .filter((n): n is number => typeof n === "number")
+    )
+  ).sort((a, b) => a - b);
+
   const safeCountries = (countries ?? []) as CountryOption[];
 
   // 2) If user selected only a COUNTRY (no specific city), convert countryId -> cityIds
@@ -119,7 +146,10 @@ export default async function ChallengesPage({
       return (
         <main className="min-h-screen">
           <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
-          <ChallengeFiltersV2 countries={safeCountries} />
+          <ChallengeFiltersV2
+            countries={safeCountries}
+            maxTimeOptions={maxTimeOptions}
+          />
           <p className="text-gray-600 mt-6">No challenges found for this country.</p>
         </main>
       );
@@ -154,7 +184,10 @@ export default async function ChallengesPage({
     <main className="min-h-screen">
       <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
 
-      <ChallengeFiltersV2 countries={safeCountries} />
+      <ChallengeFiltersV2
+        countries={safeCountries}
+        maxTimeOptions={maxTimeOptions}
+      />
 
       <p className="text-gray-600 mb-6">
         Filters:{" "}

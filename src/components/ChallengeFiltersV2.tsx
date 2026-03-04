@@ -12,9 +12,10 @@ type CityOption = { id: string; name: string };
 
 type Props = {
   countries: CountryOption[];
+  maxTimeOptions: number[];
 };
 
-export default function ChallengeFiltersV2({ countries }: Props) {
+export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -124,13 +125,19 @@ export default function ChallengeFiltersV2({ countries }: Props) {
 
         <div className="space-y-1">
           <Label htmlFor="maxTime">Max time (min)</Label>
-          <Input
+          <select
             id="maxTime"
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             value={maxTime}
             onChange={(e) => setMaxTime(e.target.value)}
-            placeholder="e.g. 30"
-            inputMode="numeric"
-          />
+          >
+            <option value="">Any</option>
+            {maxTimeOptions.map((t) => (
+              <option key={t} value={String(t)}>
+                {t} min
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-end gap-2">
