@@ -4,8 +4,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type CountryOption = { id: string; name: string };
 type CityOption = { id: string; name: string };
@@ -15,29 +21,37 @@ type Props = {
   maxTimeOptions: number[];
 };
 
+const ANY = "__any__";
+
 export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [countryId, setCountryId] = useState(searchParams.get("countryId") ?? "");
-  const [cityId, setCityId] = useState(searchParams.get("cityId") ?? "");
-  const [maxTime, setMaxTime] = useState(searchParams.get("maxTime") ?? "");
+  const initialCountryId = searchParams.get("countryId") ?? "";
+  const initialCityId = searchParams.get("cityId") ?? "";
+  const initialMaxTime = searchParams.get("maxTime") ?? "";
+
+  const [countryId, setCountryId] = useState(initialCountryId);
+  const [cityId, setCityId] = useState(initialCityId);
+  const [maxTime, setMaxTime] = useState(initialMaxTime);
 
   const [cities, setCities] = useState<CityOption[]>([]);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleCountryChange(nextCountryId: string) {
-    setCountryId(nextCountryId);
+    const normalized = nextCountryId === ANY ? "" : nextCountryId;
+
+    setCountryId(normalized);
     setCityId("");
     setCities([]);
     setError(null);
 
-    if (!nextCountryId) return;
+    if (!normalized) return;
 
     setIsLoadingCities(true);
     try {
-      const res = await fetch(`/api/cities?countryId=${nextCountryId}`);
+      const res = await fetch(`/api/cities?countryId=${normalized}`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -59,7 +73,6 @@ export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props)
 
   function applyFilters(e: React.FormEvent) {
     e.preventDefault();
-    console.log("applyFilters fired");
 
     const params = new URLSearchParams();
     if (countryId) params.set("countryId", countryId);
@@ -68,6 +81,7 @@ export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props)
 
     const qs = params.toString();
     router.push(qs ? `/challenges?${qs}` : "/challenges");
+    router.refresh();
   }
 
   function clearFilters() {
@@ -77,69 +91,85 @@ export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props)
     setCities([]);
     setError(null);
     router.push("/challenges");
+    router.refresh();
   }
 
   return (
     <Card className="p-4 mb-6">
       <form onSubmit={applyFilters} className="grid gap-4 md:grid-cols-4">
+        {/* Country */}
         <div className="space-y-1">
-          <Label htmlFor="country">Country</Label>
-          <select
-            id="country"
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            value={countryId}
-            onChange={(e) => handleCountryChange(e.target.value)}
+          <Label>Country</Label>
+          <Select
+            value={countryId || ANY}
+            onValueChange={(v) => handleCountryChange(v)}
           >
-            <option value="">Any</option>
-            {countries.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Any" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>Any</SelectItem>
+              {countries.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
+        {/* City */}
         <div className="space-y-1">
-          <Label htmlFor="city">City</Label>
-          <select
-            id="city"
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            value={cityId}
-            onChange={(e) => setCityId(e.target.value)}
+          <Label>City</Label>
+          <Select
+            value={cityId || ANY}
+            onValueChange={(v) => setCityId(v === ANY ? "" : v)}
             disabled={!countryId || isLoadingCities}
           >
-            <option value="">
-              {!countryId
-                ? "Select country first"
-                : isLoadingCities
-                ? "Loading..."
-                : "Any"}
-            </option>
-            {cities.map((ct) => (
-              <option key={ct.id} value={ct.id}>
-                {ct.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue
+                placeholder={
+                  !countryId
+                    ? "Select country first"
+                    : isLoadingCities
+                    ? "Loading..."
+                    : "Any"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>Any</SelectItem>
+              {cities.map((ct) => (
+                <SelectItem key={ct.id} value={ct.id}>
+                  {ct.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
+        {/* Max time */}
         <div className="space-y-1">
-          <Label htmlFor="maxTime">Max time (min)</Label>
-          <select
-            id="maxTime"
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            value={maxTime}
-            onChange={(e) => setMaxTime(e.target.value)}
+          <Label>Max time (min)</Label>
+          <Select
+            value={maxTime || ANY}
+            onValueChange={(v) => setMaxTime(v === ANY ? "" : v)}
           >
-            <option value="">Any</option>
-            {maxTimeOptions.map((t) => (
-              <option key={t} value={String(t)}>
-                {t} min
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Any" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>Any</SelectItem>
+              {maxTimeOptions.map((t) => (
+                <SelectItem key={t} value={String(t)}>
+                  {t} min
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
+        {/* Buttons */}
         <div className="flex items-end gap-2">
           <Button type="submit">Apply</Button>
           <Button type="button" variant="outline" onClick={clearFilters}>
