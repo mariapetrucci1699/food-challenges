@@ -5,21 +5,25 @@ import { supabase } from "@/lib/supabaseClient";
 
 type CountryOption = { id: string; name: string };
 type CityOption = { id: string; name: string };
+type CategoryOption = { id: string; name: string; slug?: string };
 
 type Props = {
   countries: CountryOption[];
+  categories: CategoryOption[];
 };
 
-export default function SubmitForm({ countries }: Props) {
+export default function SubmitForm({ countries, categories }: Props) {
   const [name, setName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [countryId, setCountryId] = useState("");
   const [cityId, setCityId] = useState("");
-  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  const [cities, setCities] = useState<CityOption[]>([]);
   const [timeLimit, setTimeLimit] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState("");
 
   async function handleCountryChange(nextCountryId: string) {
     setCountryId(nextCountryId);
@@ -57,7 +61,7 @@ export default function SubmitForm({ countries }: Props) {
     setSuccess(false);
     setIsSubmitting(true);
 
-    if (!name.trim() || !countryId || !cityId) {
+    if (!name.trim() || !categoryId || !countryId || !cityId) {
       setError("Please fill all required fields.");
       setIsSubmitting(false);
       return;
@@ -72,6 +76,8 @@ export default function SubmitForm({ countries }: Props) {
 
     const { error: insertError } = await supabase.from("challenges").insert({
       name: name.trim(),
+      restaurant_name: restaurantName.trim() || null,
+      category_id: categoryId,
       city_id: cityId,
       time_limit_minutes: parsedTime,
       status: "pending",
@@ -86,10 +92,12 @@ export default function SubmitForm({ countries }: Props) {
 
     setSuccess(true);
     setName("");
+    setCategoryId("");
     setCountryId("");
     setCityId("");
     setCities([]);
     setTimeLimit("");
+    setRestaurantName("");
   }
 
   return (
@@ -101,6 +109,32 @@ export default function SubmitForm({ countries }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Restaurant name *</label>
+        <input
+          className="w-full border rounded-lg p-3"
+          value={restaurantName}
+          onChange={(e) => setRestaurantName(e.target.value)}
+          placeholder="e.g. O Bifanas do Metro"
+        />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Category *</label>
+        <select
+          className="w-full border rounded-lg p-3"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+        >
+          <option value="">Select category</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
@@ -121,27 +155,27 @@ export default function SubmitForm({ countries }: Props) {
 
       <div>
         <label className="block font-medium mb-1">City *</label>
-            <select
-                className="w-full border rounded-lg p-3"
-                value={cityId}
-                onChange={(e) => setCityId(e.target.value)}
-                disabled={!countryId || isLoadingCities}
-            >
-                <option value="">
-                {!countryId
-                    ? "Select country first"
-                    : isLoadingCities
-                    ? "Loading cities..."
-                    : "Select city"}
-                </option>
+        <select
+          className="w-full border rounded-lg p-3"
+          value={cityId}
+          onChange={(e) => setCityId(e.target.value)}
+          disabled={!countryId || isLoadingCities}
+        >
+          <option value="">
+            {!countryId
+              ? "Select country first"
+              : isLoadingCities
+              ? "Loading cities..."
+              : "Select city"}
+          </option>
 
-                {cities.map((ct) => (
-                <option key={ct.id} value={ct.id}>
-                    {ct.name}
-                </option>
-                ))}
-            </select>
-        </div>
+          {cities.map((ct) => (
+            <option key={ct.id} value={ct.id}>
+              {ct.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div>
         <label className="block font-medium mb-1">Time limit (minutes)</label>
@@ -163,7 +197,9 @@ export default function SubmitForm({ countries }: Props) {
 
       {error && <p className="text-red-600">{error}</p>}
       {success && (
-        <p className="text-green-600">✅ Submitted! It will appear after approval.</p>
+        <p className="text-green-600">
+          ✅ Submitted! It will appear after approval.
+        </p>
       )}
     </form>
   );

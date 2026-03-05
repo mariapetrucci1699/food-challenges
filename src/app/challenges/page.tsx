@@ -1,6 +1,7 @@
 import ChallengeCard from "@/components/ChallengeCard";
 import ChallengeFiltersV2 from "@/components/ChallengeFiltersV2";
 import { supabase } from "@/lib/supabaseClient";
+import ChallengesMapWrapper from "@/components/ChallengesMapWrapper";
 
 type CountryOption = { id: string; name: string };
 
@@ -10,19 +11,17 @@ type ChallengeRow = {
   time_limit_minutes: number | null;
   status: string;
 
-  // legacy columns (if they still exist in your table)
-  city_text?: string | null;
-  country_text?: string | null;
-
-  // joined objects
   city: null | {
     id: string;
     name: string;
+    latitude: number | null;
+    longitude: number | null;
     country: null | {
       id: string;
       name: string;
     };
   };
+  restaurant_name: string | null;
 };
 
 export default async function ChallengesPage({
@@ -113,24 +112,23 @@ export default async function ChallengesPage({
   // 3) Build ONE stable query with stable joins (always the same select)
   let query = supabase
     .from("challenges")
-    .select(
-      `
+    .select(`
+      id,
+      name,
+      restaurant_name,
+      time_limit_minutes,
+      status,
+      city:cities!challenges_city_id_fkey (
         id,
         name,
-        time_limit_minutes,
-        status,
-        city_text:city,
-        country_text:country,
-        city:cities!challenges_city_id_fkey (
+        latitude,
+        longitude,
+        country:countries!cities_country_id_fkey (
           id,
-          name,
-          country:countries!cities_country_id_fkey (
-            id,
-            name
-          )
+          name
         )
-      `
-    )
+      )
+    `)
     .eq("status", "approved")
     .order("created_at", { ascending: false });
 
@@ -176,6 +174,31 @@ export default async function ChallengesPage({
 
   const challenges = (data ?? []) as ChallengeRow[];
 
+  const points = challenges
+  .map((ch) => {
+    const lat = ch.city?.latitude;
+    const lng = ch.city?.longitude;
+
+    if (typeof lat !== "number" || typeof lng !== "number") return null;
+
+    return {
+      id: ch.id,
+      name: ch.name,
+      cityName: ch.city?.name ?? ch.city_text ?? "Unknown city",
+      countryName: ch.city?.country?.name ?? ch.country_text ?? null,
+      lat,
+      lng,
+    };
+  })
+  .filter(Boolean) as {
+    id: string;
+    name: string;
+    cityName: string;
+    countryName: string | null;
+    lat: number;
+    lng: number;
+  }[];
+
   const selectedCountryName = countryId
     ? safeCountries.find((c) => c.id === countryId)?.name ?? null
     : null;
@@ -188,6 +211,8 @@ export default async function ChallengesPage({
         countries={safeCountries}
         maxTimeOptions={maxTimeOptions}
       />
+
+      <ChallengesMapWrapper points={points} />
 
       <p className="text-gray-600 mb-6">
         Filters:{" "}
@@ -219,8 +244,8 @@ export default async function ChallengesPage({
       ) : (
         <div className="grid gap-6 md:grid-cols-3">
           {challenges.map((ch) => {
-            const cityName = ch.city?.name ?? ch.city_text ?? "Unknown city";
-            const countryName = ch.city?.country?.name ?? ch.country_text ?? null;
+            const cityName = ch.city?.name ?? "Unknown city";
+            const countryName = ch.city?.country?.name ?? null;
 
             return (
               <ChallengeCard
@@ -230,6 +255,7 @@ export default async function ChallengesPage({
                 city={cityName}
                 country={countryName}
                 timeLimitMinutes={ch.time_limit_minutes}
+                restaurantName={ch.restaurant_name}
               />
             );
           })}

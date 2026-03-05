@@ -8,6 +8,7 @@ type ChallengeCardProps = {
   city: string;
   country?: string | null;
   timeLimitMinutes?: number | null;
+  restaurantName?: string | null;
 };
 
 export default function ChallengeCard({
@@ -16,6 +17,7 @@ export default function ChallengeCard({
   city,
   country,
   timeLimitMinutes,
+  restaurantName
 }: ChallengeCardProps) {
   return (
     <Link href={`/challenges/${id}`} className="block">
@@ -29,6 +31,10 @@ export default function ChallengeCard({
             {city}
             {country ? `, ${country}` : ""}
           </p>
+
+          {restaurantName ? (
+            <p className="text-sm text-muted-foreground">🏪 {restaurantName}</p>
+          ) : null}
 
           {typeof timeLimitMinutes === "number" ? (
             <Badge variant="secondary">⏱ {timeLimitMinutes} min</Badge>
