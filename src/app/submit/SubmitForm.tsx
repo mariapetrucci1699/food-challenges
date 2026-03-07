@@ -24,6 +24,7 @@ export default function SubmitForm({ countries, categories }: Props) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState("");
+  const [addressLine, setAddressLine] = useState("");
 
   async function handleCountryChange(nextCountryId: string) {
     setCountryId(nextCountryId);
@@ -77,6 +78,7 @@ export default function SubmitForm({ countries, categories }: Props) {
     const { error: insertError } = await supabase.from("challenges").insert({
       name: name.trim(),
       restaurant_name: restaurantName.trim() || null,
+      address_line: addressLine.trim() || null,
       category_id: categoryId,
       city_id: cityId,
       time_limit_minutes: parsedTime,
@@ -98,6 +100,7 @@ export default function SubmitForm({ countries, categories }: Props) {
     setCities([]);
     setTimeLimit("");
     setRestaurantName("");
+    setAddressLine("");
   }
 
   return (
@@ -118,6 +121,16 @@ export default function SubmitForm({ countries, categories }: Props) {
           value={restaurantName}
           onChange={(e) => setRestaurantName(e.target.value)}
           placeholder="e.g. O Bifanas do Metro"
+        />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Address</label>
+        <input
+          className="w-full border rounded-lg p-3"
+          value={addressLine}
+          onChange={(e) => setAddressLine(e.target.value)}
+          placeholder="e.g. Rua Augusta 120, Lisbon"
         />
       </div>
 

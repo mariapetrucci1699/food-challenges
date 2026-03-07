@@ -178,6 +178,7 @@ export default async function ChallengesPage({
   .map((ch) => {
     const lat = ch.city?.latitude;
     const lng = ch.city?.longitude;
+    
 
     if (typeof lat !== "number" || typeof lng !== "number") return null;
 
