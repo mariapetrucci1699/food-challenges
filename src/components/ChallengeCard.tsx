@@ -33,47 +33,52 @@ export default function ChallengeCard({
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >
-      <Card className="h-full flex flex-col overflow-hidden transition hover:shadow-md">
+      <Card className="h-full overflow-hidden border-border/80 bg-card/95 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl">
         <div className="h-44 w-full overflow-hidden bg-muted">
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={name}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]"
             />
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
+            <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground">
               No photo yet 🍽️
             </div>
           )}
         </div>
 
-        <CardHeader>
-          <CardTitle className="text-xl">{name}</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="line-clamp-2 text-xl leading-snug">
+            {name}
+          </CardTitle>
         </CardHeader>
 
-        <CardContent className="flex flex-col gap-2 flex-1">
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
+        <CardContent className="flex h-full flex-col gap-3">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4 text-primary" />
             {city}
             {country ? `, ${country}` : ""}
           </p>
 
           {restaurantName && (
-            <p className="text-sm flex items-center gap-2">
-              <Store className="h-4 w-4 text-muted-foreground" />
+            <p className="flex items-center gap-2 text-sm text-foreground/85">
+              <Store className="h-4 w-4 text-primary" />
               {restaurantName}
             </p>
           )}
 
           <div className="mt-auto">
             {typeof timeLimitMinutes === "number" ? (
-              <Badge variant="secondary" className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+              <Badge className="inline-flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary">
+                <Clock className="h-3.5 w-3.5" />
                 {timeLimitMinutes} min
               </Badge>
             ) : (
-              <Badge variant="outline">No time limit</Badge>
+              <Badge variant="secondary" className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                No time limit
+              </Badge>
             )}
           </div>
         </CardContent>

@@ -203,18 +203,20 @@ export default async function ChallengesPage({
     : null;
 
   return (
-    <main className="min-h-screen">
-      <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
+    <main className="min-h-screen px-6 py-8">
+      <div className="mx-auto max-w-[1600px]">
+        <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
 
-      <ChallengesPageClient
-        countries={safeCountries}
-        maxTimeOptions={maxTimeOptions}
-        challenges={challenges}
-        points={points}
-        selectedCountryName={selectedCountryName}
-        cityId={cityId}
-        maxTime={maxTime}
-      />
+        <ChallengesPageClient
+          countries={safeCountries}
+          maxTimeOptions={maxTimeOptions}
+          challenges={challenges}
+          points={points}
+          selectedCountryName={selectedCountryName}
+          cityId={cityId}
+          maxTime={maxTime}
+        />
+      </div>
     </main>
   );
 }

@@ -36,13 +36,15 @@ export default async function SubmitPage() {
   }
 
   return (
-    <main className="min-h-screen p-8 max-w-xl mx-auto">
-      <h1 className="text-4xl font-bold mb-6">📝 Submit a Challenge</h1>
+    <main className="min-h-screen px-6 py-8">
+      <div className="mx-auto max-w-2xl">
+        <h1 className="text-4xl font-bold mb-6">📝 Submit a Challenge</h1>
 
-      <SubmitForm
-        countries={(countries ?? []) as CountryOption[]}
-        categories={(categories ?? []) as CategoryOption[]}
-      />
+        <SubmitForm
+          countries={(countries ?? []) as CountryOption[]}
+          categories={(categories ?? []) as CategoryOption[]}
+        />
+      </div>
     </main>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import L, { LatLngBounds } from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
@@ -76,6 +76,32 @@ function FitBounds({ points }: { points: { lat: number; lng: number }[] }) {
   return null;
 }
 
+function HoveredMarkerController({
+  hoveredId,
+  points,
+  markerRefs,
+}: {
+  hoveredId: string | null;
+  points: MapPoint[];
+  markerRefs: React.MutableRefObject<Record<string, L.Marker | null>>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!hoveredId) return;
+
+    const marker = markerRefs.current[hoveredId];
+    const point = points.find((p) => p.id === hoveredId);
+
+    if (marker && point) {
+      marker.openPopup();
+      map.panTo([point.lat, point.lng], { animate: true, duration: 0.4 });
+    }
+  }, [hoveredId, map, markerRefs, points]);
+
+  return null;
+}
+
 export default function ChallengesMap({
   points,
   hoveredId,
@@ -84,6 +110,8 @@ export default function ChallengesMap({
   hoveredId: string | null;
 }) {
   if (!points || points.length === 0) return null;
+
+  const markerRefs = useRef<Record<string, L.Marker | null>>({});
 
   const center = useMemo(() => {
     const lat = points.reduce((s, p) => s + p.lat, 0) / points.length;
@@ -103,15 +131,9 @@ export default function ChallengesMap({
   }, [points]);
 
   return (
-    <div className="rounded-xl border overflow-hidden mb-6">
-      <div className="px-4 py-3 border-b bg-background">
-        <h2 className="font-semibold">Map</h2>
-        <p className="text-sm text-muted-foreground">
-          Explore challenge locations.
-        </p>
-      </div>
+    <div className="overflow-hidden rounded-[24px]">
 
-      <div className="h-[520px]">
+      <div className="h-[380px] md:h-[460px]">
         <MapContainer
           center={[center.lat, center.lng]}
           zoom={3}
@@ -120,6 +142,11 @@ export default function ChallengesMap({
         >
           <FixLeafletResize />
           <FitBounds points={points} />
+          <HoveredMarkerController
+            hoveredId={hoveredId}
+            points={points}
+            markerRefs={markerRefs}
+          />
 
           <TileLayer
             attribution="&copy; OpenStreetMap contributors &copy; CARTO"
@@ -135,6 +162,9 @@ export default function ChallengesMap({
                   ? makeEmojiIcon("🔥")
                   : iconsById.get(p.id) ?? makeEmojiIcon("🍽️")
               }
+              ref={(ref) => {
+                markerRefs.current[p.id] = ref;
+              }}
             >
               <Popup>
                 <div className="space-y-2 w-[180px]">

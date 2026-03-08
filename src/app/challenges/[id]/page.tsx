@@ -126,7 +126,7 @@ export default async function ChallengeDetailPage({
         ← Back to all challenges
       </Link>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="mx-auto max-w-6xl">
         {/* LEFT COLUMN */}
         <div>
           <h1 className="text-4xl font-bold leading-tight">{challenge.name}</h1>

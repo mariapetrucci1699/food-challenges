@@ -2,9 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,7 +21,10 @@ type Props = {
 
 const ANY = "__any__";
 
-export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props) {
+export default function ChallengeFiltersV2({
+  countries,
+  maxTimeOptions,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -95,20 +96,21 @@ export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props)
   }
 
   return (
-    <Card className="p-4 mb-6">
+    <div className="mb-6 rounded-[28px] border border-border/70 bg-card/95 p-4 shadow-sm backdrop-blur-sm">
       <form onSubmit={applyFilters} className="grid gap-4 md:grid-cols-4">
-        {/* Country */}
-        <div className="space-y-1">
-          <Label>Country</Label>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Country
+          </p>
           <Select
             value={countryId || ANY}
             onValueChange={(v) => handleCountryChange(v)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Any" />
+            <SelectTrigger className="h-11 rounded-2xl border-border/80 bg-background/80">
+              <SelectValue placeholder="Any country" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ANY}>Any country</SelectItem>
               {countries.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.name}
@@ -118,27 +120,28 @@ export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props)
           </Select>
         </div>
 
-        {/* City */}
-        <div className="space-y-1">
-          <Label>City</Label>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            City
+          </p>
           <Select
             value={cityId || ANY}
             onValueChange={(v) => setCityId(v === ANY ? "" : v)}
             disabled={!countryId || isLoadingCities}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-11 rounded-2xl border-border/80 bg-background/80">
               <SelectValue
                 placeholder={
                   !countryId
                     ? "Select country first"
                     : isLoadingCities
                     ? "Loading..."
-                    : "Any"
+                    : "Any city"
                 }
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ANY}>Any city</SelectItem>
               {cities.map((ct) => (
                 <SelectItem key={ct.id} value={ct.id}>
                   {ct.name}
@@ -148,31 +151,41 @@ export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props)
           </Select>
         </div>
 
-        {/* Max time */}
-        <div className="space-y-1">
-          <Label>Max time (min)</Label>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Time limit
+          </p>
           <Select
             value={maxTime || ANY}
             onValueChange={(v) => setMaxTime(v === ANY ? "" : v)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Any" />
+            <SelectTrigger className="h-11 rounded-2xl border-border/80 bg-background/80">
+              <SelectValue placeholder="Any duration" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ANY}>Any duration</SelectItem>
               {maxTimeOptions.map((t) => (
                 <SelectItem key={t} value={String(t)}>
-                  {t} min
+                  Up to {t} min
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Buttons */}
         <div className="flex items-end gap-2">
-          <Button type="submit">Apply</Button>
-          <Button type="button" variant="outline" onClick={clearFilters}>
+          <Button
+            type="submit"
+            className="h-11 rounded-2xl bg-primary px-5 text-primary-foreground hover:opacity-90"
+          >
+            Apply
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={clearFilters}
+            className="h-11 rounded-2xl px-5"
+          >
             Clear
           </Button>
         </div>
@@ -181,6 +194,6 @@ export default function ChallengeFiltersV2({ countries, maxTimeOptions }: Props)
           <p className="text-sm text-red-600 md:col-span-4">{error}</p>
         ) : null}
       </form>
-    </Card>
+    </div>
   );
 }
