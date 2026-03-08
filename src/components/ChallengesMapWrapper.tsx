@@ -6,6 +6,11 @@ const ChallengesMap = dynamic(() => import("./ChallengesMap"), {
   ssr: false,
 });
 
-export default function ChallengesMapWrapper({ points }: any) {
-  return <ChallengesMap points={points} />;
+type Props = {
+  points: any[];
+  hoveredId: string | null;
+};
+
+export default function ChallengesMapWrapper({ points, hoveredId }: Props) {
+  return <ChallengesMap points={points} hoveredId={hoveredId} />;
 }

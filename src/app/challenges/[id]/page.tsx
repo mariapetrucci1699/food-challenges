@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { MapPin, Store, Clock } from "lucide-react";
+import { MapPin, Store, Clock, ImageIcon } from "lucide-react";
 
 type ChallengeDetailRow = {
   id: string;
   name: string;
   restaurant_name: string | null;
   address_line: string | null;
+  latitude: number | null;
+  longitude: number | null;
   time_limit_minutes: number | null;
   status: string;
   created_at: string;
@@ -18,6 +20,7 @@ type ChallengeDetailRow = {
       name: string;
     };
   };
+  image_url: string | null;
 };
 
 export default async function ChallengeDetailPage({
@@ -47,9 +50,12 @@ export default async function ChallengeDetailPage({
       name,
       restaurant_name,
       address_line,
+      latitude,
+      longitude,
       time_limit_minutes,
       status,
       created_at,
+      image_url,
       city:cities!challenges_city_id_fkey (
         id,
         name,
@@ -101,12 +107,18 @@ export default async function ChallengeDetailPage({
     countryName,
   ].filter(Boolean);
 
-  const googleMapsUrl =
+  const mapQuery =
     mapsQueryParts.length > 0
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          mapsQueryParts.join(", ")
-        )}`
+      ? encodeURIComponent(mapsQueryParts.join(", "))
       : null;
+
+  const googleMapsUrl = mapQuery
+    ? `https://www.google.com/maps/search/?api=1&query=${mapQuery}`
+    : null;
+
+  const googleMapsEmbedUrl = mapQuery
+    ? `https://www.google.com/maps?q=${mapQuery}&output=embed`
+    : null;
 
   return (
     <main className="min-h-screen p-8">
@@ -114,58 +126,80 @@ export default async function ChallengeDetailPage({
         ← Back to all challenges
       </Link>
 
-      <div className="mt-6 flex items-start justify-between gap-4">
-        <h1 className="text-4xl font-bold">{challenge.name}</h1>
+      <div className="mt-6 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        {/* LEFT COLUMN */}
+        <div>
+          <h1 className="text-4xl font-bold leading-tight">{challenge.name}</h1>
 
-        {googleMapsUrl ? (
-          <a
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2 text-sm font-medium shadow-sm hover:bg-muted transition"
-          >
-            <MapPin className="h-4 w-4" />
-            Google Maps
-          </a>
-        ) : null}
-      </div>
+          <div className="mt-6 space-y-4 text-gray-700">
+            {challenge.address_line && googleMapsUrl ? (
+              <a
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:underline"
+              >
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                {challenge.address_line}
+              </a>
+            ) : (
+              <p className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                {cityName}
+                {countryName ? `, ${countryName}` : ""}
+              </p>
+            )}
 
-      <div className="mt-4 space-y-2 text-gray-700">
-        <p className="flex items-center gap-2">
-          <MapPin className="h-4 w-4" />
-          {cityName}
-          {countryName ? `, ${countryName}` : ""}
-        </p>
+            {challenge.restaurant_name && (
+              <p className="flex items-center gap-2">
+                <Store className="h-4 w-4 text-muted-foreground" />
+                {challenge.restaurant_name}
+              </p>
+            )}
 
-        {challenge.restaurant_name && (
-          <p className="flex items-center gap-2">
-            <Store className="h-5 w-5 text-muted-foreground" />
-            {challenge.restaurant_name}
-          </p>
-        )}
+            <p className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              {typeof challenge.time_limit_minutes === "number"
+                ? `${challenge.time_limit_minutes} minutes`
+                : "No time limit"}
+            </p>
+          </div>
 
-        {challenge.address_line && (
-          <p className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            {challenge.address_line}
-          </p>
-        )}
-      </div>
+          {googleMapsEmbedUrl ? (
+            <div className="mt-8 rounded-xl border overflow-hidden h-[320px]">
+              <iframe
+                title={`Map for ${challenge.name}`}
+                src={googleMapsEmbedUrl}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+          ) : null}
+        </div>
 
-      <div className="mt-6 space-y-2">
-        <p className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-muted-foreground" />
-          {typeof challenge.time_limit_minutes === "number"
-            ? `${challenge.time_limit_minutes} minutes`
-            : "No time limit"}
-        </p>
-
-        <p className="text-gray-500 text-sm">
-          Added on:{" "}
-          {challenge.created_at
-            ? new Date(challenge.created_at).toLocaleDateString()
-            : "Unknown"}
-        </p>
+        {/* RIGHT COLUMN */}
+        <div>
+          {challenge.image_url ? (
+            <div className="rounded-2xl border overflow-hidden h-[320px] lg:h-[420px] bg-muted">
+              <img
+                src={challenge.image_url}
+                alt={challenge.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="rounded-2xl border bg-muted/30 h-[320px] lg:h-[420px] flex flex-col items-center justify-center text-center p-6">
+              <p className="text-xl font-semibold">No photo yet 🍽️</p>
+              <p className="text-sm text-muted-foreground mt-2 max-w-xs">
+                Be the first to show this challenge to the world.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

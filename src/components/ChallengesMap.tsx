@@ -8,6 +8,8 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 type MapPoint = {
   id: string;
   name: string;
+  imageUrl: string | null;
+  restaurantName: string | null;
   cityName: string;
   countryName: string | null;
   lat: number;
@@ -25,9 +27,16 @@ function getFoodEmoji(name: string) {
   if (n.includes("spicy") || n.includes("inferno") || n.includes("hot")) return "🌶️";
   if (n.includes("steak")) return "🥩";
   if (n.includes("chicken")) return "🍗";
-  if (n.includes("ice") || n.includes("gelato") || n.includes("dessert") || n.includes("cake")) return "🍰";
+  if (
+    n.includes("ice") ||
+    n.includes("gelato") ||
+    n.includes("dessert") ||
+    n.includes("cake")
+  ) {
+    return "🍰";
+  }
 
-  return "🍽️"; // fallback
+  return "🍽️";
 }
 
 function makeEmojiIcon(emoji: string) {
@@ -67,8 +76,13 @@ function FitBounds({ points }: { points: { lat: number; lng: number }[] }) {
   return null;
 }
 
-export default function ChallengesMap({ points }: { points: MapPoint[] }) {
-  // If no points, don’t render map (avoids pointless tile loads)
+export default function ChallengesMap({
+  points,
+  hoveredId,
+}: {
+  points: MapPoint[];
+  hoveredId: string | null;
+}) {
   if (!points || points.length === 0) return null;
 
   const center = useMemo(() => {
@@ -77,7 +91,6 @@ export default function ChallengesMap({ points }: { points: MapPoint[] }) {
     return { lat, lng };
   }, [points]);
 
-  // ⭐ ADD THIS PART
   const iconsById = useMemo(() => {
     const map = new Map<string, L.DivIcon>();
 
@@ -89,19 +102,16 @@ export default function ChallengesMap({ points }: { points: MapPoint[] }) {
     return map;
   }, [points]);
 
-
-
   return (
     <div className="rounded-xl border overflow-hidden mb-6">
       <div className="px-4 py-3 border-b bg-background">
-        <h2 className="font-semibold">🗺️ Challenge Map</h2>
+        <h2 className="font-semibold">Map</h2>
         <p className="text-sm text-muted-foreground">
-          Click a marker to view a challenge.
+          Explore challenge locations.
         </p>
       </div>
 
-      {/* shorter + wide */}
-      <div className="h-[260px] md:h-[320px]">
+      <div className="h-[520px]">
         <MapContainer
           center={[center.lat, center.lng]}
           zoom={3}
@@ -112,30 +122,54 @@ export default function ChallengesMap({ points }: { points: MapPoint[] }) {
           <FitBounds points={points} />
 
           <TileLayer
-            attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+            attribution="&copy; OpenStreetMap contributors &copy; CARTO"
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            />
+          />
 
           {points.map((p) => (
-                <Marker
-                    key={p.id}
-                    position={[p.lat, p.lng]}
-                    icon={iconsById.get(p.id)}
-                >
-                    <Popup>
-                    <div className="space-y-1">
-                        <div className="font-semibold">{p.name}</div>
-                        <div className="text-sm">
-                        {p.cityName}
-                        {p.countryName ? `, ${p.countryName}` : ""}
-                        </div>
-                        <Link className="text-sm underline" href={`/challenges/${p.id}`}>
-                        View details →
-                        </Link>
+            <Marker
+              key={p.id}
+              position={[p.lat, p.lng]}
+              icon={
+                hoveredId === p.id
+                  ? makeEmojiIcon("🔥")
+                  : iconsById.get(p.id) ?? makeEmojiIcon("🍽️")
+              }
+            >
+              <Popup>
+                <div className="space-y-2 w-[180px]">
+                  {p.imageUrl ? (
+                    <div className="overflow-hidden rounded-md">
+                      <img
+                        src={p.imageUrl}
+                        alt={p.name}
+                        className="h-24 w-full object-cover"
+                      />
                     </div>
-                    </Popup>
-                </Marker>
-                ))}
+                  ) : (
+                    <div className="h-24 w-full rounded-md bg-muted/40 flex items-center justify-center text-xs text-muted-foreground text-center px-2">
+                      No photo yet 🍽️
+                    </div>
+                  )}
+
+                  <div className="font-semibold">{p.name}</div>
+
+                  {p.restaurantName ? (
+                    <div className="text-sm">🏪 {p.restaurantName}</div>
+                  ) : null}
+
+                  <div className="text-sm">
+                    {p.cityName}
+                    {p.countryName ? `, ${p.countryName}` : ""}
+                  </div>
+
+                  <Link className="text-sm underline" href={`/challenges/${p.id}`}>
+                    View details →
+                  </Link>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
       </div>
     </div>

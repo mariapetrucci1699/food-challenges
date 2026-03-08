@@ -19,12 +19,14 @@ export default function SubmitForm({ countries, categories }: Props) {
   const [cityId, setCityId] = useState("");
   const [cities, setCities] = useState<CityOption[]>([]);
   const [timeLimit, setTimeLimit] = useState("");
+  const [restaurantName, setRestaurantName] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restaurantName, setRestaurantName] = useState("");
-  const [addressLine, setAddressLine] = useState("");
 
   async function handleCountryChange(nextCountryId: string) {
     setCountryId(nextCountryId);
@@ -62,7 +64,13 @@ export default function SubmitForm({ countries, categories }: Props) {
     setSuccess(false);
     setIsSubmitting(true);
 
-    if (!name.trim() || !categoryId || !countryId || !cityId) {
+    if (
+      !name.trim() ||
+      !restaurantName.trim() ||
+      !categoryId ||
+      !countryId ||
+      !cityId
+    ) {
       setError("Please fill all required fields.");
       setIsSubmitting(false);
       return;
@@ -75,6 +83,72 @@ export default function SubmitForm({ countries, categories }: Props) {
       return;
     }
 
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    if (addressLine.trim()) {
+      const selectedCountry =
+        countries.find((c) => c.id === countryId)?.name ?? "";
+      const selectedCity = cities.find((c) => c.id === cityId)?.name ?? "";
+
+      const geocodeQuery = [
+        restaurantName.trim(),
+        addressLine.trim(),
+        selectedCity,
+        selectedCountry,
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      try {
+        const geoRes = await fetch(
+          `/api/geocode?q=${encodeURIComponent(
+            geocodeQuery
+          )}&address=${encodeURIComponent(
+            addressLine.trim()
+          )}&city=${encodeURIComponent(
+            selectedCity
+          )}&country=${encodeURIComponent(selectedCountry)}`
+        );
+
+        const geoData = await geoRes.json();
+
+        if (geoRes.ok) {
+          latitude = geoData.latitude ?? null;
+          longitude = geoData.longitude ?? null;
+        }
+      } catch {
+        // keep submission going even if geocoding fails
+      }
+    }
+
+    let imageUrl: string | null = null;
+
+    if (photoFile) {
+      const fileExt = photoFile.name.split(".").pop()?.toLowerCase() || "jpg";
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `submissions/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("challenge-images")
+        .upload(filePath, photoFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setError(`Image upload failed: ${uploadError.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("challenge-images")
+        .getPublicUrl(filePath);
+
+      imageUrl = publicUrlData.publicUrl;
+    }
+
     const { error: insertError } = await supabase.from("challenges").insert({
       name: name.trim(),
       restaurant_name: restaurantName.trim() || null,
@@ -82,6 +156,9 @@ export default function SubmitForm({ countries, categories }: Props) {
       category_id: categoryId,
       city_id: cityId,
       time_limit_minutes: parsedTime,
+      latitude,
+      longitude,
+      image_url: imageUrl,
       status: "pending",
     });
 
@@ -101,6 +178,7 @@ export default function SubmitForm({ countries, categories }: Props) {
     setTimeLimit("");
     setRestaurantName("");
     setAddressLine("");
+    setPhotoFile(null);
   }
 
   return (
@@ -132,6 +210,19 @@ export default function SubmitForm({ countries, categories }: Props) {
           onChange={(e) => setAddressLine(e.target.value)}
           placeholder="e.g. Rua Augusta 120, Lisbon"
         />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Photo</label>
+        <input
+          type="file"
+          accept="image/*"
+          className="w-full border rounded-lg p-3"
+          onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+        />
+        <p className="text-sm text-muted-foreground mt-1">
+          Optional, but photos make the challenge much more fun.
+        </p>
       </div>
 
       <div>

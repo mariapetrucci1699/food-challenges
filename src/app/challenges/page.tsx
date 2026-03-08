@@ -1,16 +1,16 @@
-import ChallengeCard from "@/components/ChallengeCard";
+import ChallengesPageClient from "@/components/ChallengesPageClient";
 import ChallengeFiltersV2 from "@/components/ChallengeFiltersV2";
 import { supabase } from "@/lib/supabaseClient";
-import ChallengesMapWrapper from "@/components/ChallengesMapWrapper";
 
 type CountryOption = { id: string; name: string };
 
 type ChallengeRow = {
   id: string;
   name: string;
+  image_url: string | null;
+  restaurant_name: string | null;
   time_limit_minutes: number | null;
   status: string;
-
   city: null | {
     id: string;
     name: string;
@@ -21,7 +21,17 @@ type ChallengeRow = {
       name: string;
     };
   };
-  restaurant_name: string | null;
+};
+
+type MapPoint = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  restaurantName: string | null;
+  cityName: string;
+  countryName: string | null;
+  lat: number;
+  lng: number;
 };
 
 export default async function ChallengesPage({
@@ -38,7 +48,6 @@ export default async function ChallengesPage({
   const maxTimeRaw = resolvedSearchParams?.maxTime?.trim() || "";
   const maxTime = maxTimeRaw ? Number(maxTimeRaw) : null;
 
-  // 1) Load countries for the dropdown
   const { data: countries, error: countriesError } = await supabase
     .from("countries")
     .select("id, name")
@@ -56,7 +65,6 @@ export default async function ChallengesPage({
     );
   }
 
-  // 1b) Load unique time limits for filter dropdown
   const { data: timeRows, error: timeError } = await supabase
     .from("challenges")
     .select("time_limit_minutes")
@@ -85,7 +93,6 @@ export default async function ChallengesPage({
 
   const safeCountries = (countries ?? []) as CountryOption[];
 
-  // 2) If user selected only a COUNTRY (no specific city), convert countryId -> cityIds
   let cityIdsForCountry: string[] | null = null;
 
   if (!cityId && countryId) {
@@ -109,12 +116,12 @@ export default async function ChallengesPage({
     cityIdsForCountry = (cityRows ?? []).map((r) => r.id);
   }
 
-  // 3) Build ONE stable query with stable joins (always the same select)
   let query = supabase
     .from("challenges")
     .select(`
       id,
       name,
+      image_url,
       restaurant_name,
       time_limit_minutes,
       status,
@@ -132,15 +139,12 @@ export default async function ChallengesPage({
     .eq("status", "approved")
     .order("created_at", { ascending: false });
 
-  // Filter by exact city
   if (cityId) {
     query = query.eq("city_id", cityId);
   }
 
-  // Filter by country (via city IDs)
   if (!cityId && countryId) {
     if (!cityIdsForCountry || cityIdsForCountry.length === 0) {
-      // No cities for that country -> no challenges
       return (
         <main className="min-h-screen">
           <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
@@ -152,10 +156,10 @@ export default async function ChallengesPage({
         </main>
       );
     }
+
     query = query.in("city_id", cityIdsForCountry);
   }
 
-  // Filter by max time
   if (maxTime !== null && !Number.isNaN(maxTime)) {
     query = query.lte("time_limit_minutes", maxTime);
   }
@@ -175,30 +179,24 @@ export default async function ChallengesPage({
   const challenges = (data ?? []) as ChallengeRow[];
 
   const points = challenges
-  .map((ch) => {
-    const lat = ch.city?.latitude;
-    const lng = ch.city?.longitude;
-    
+    .map((ch) => {
+      const lat = ch.city?.latitude;
+      const lng = ch.city?.longitude;
 
-    if (typeof lat !== "number" || typeof lng !== "number") return null;
+      if (typeof lat !== "number" || typeof lng !== "number") return null;
 
-    return {
-      id: ch.id,
-      name: ch.name,
-      cityName: ch.city?.name ?? ch.city_text ?? "Unknown city",
-      countryName: ch.city?.country?.name ?? ch.country_text ?? null,
-      lat,
-      lng,
-    };
-  })
-  .filter(Boolean) as {
-    id: string;
-    name: string;
-    cityName: string;
-    countryName: string | null;
-    lat: number;
-    lng: number;
-  }[];
+      return {
+        id: ch.id,
+        name: ch.name,
+        imageUrl: ch.image_url,
+        restaurantName: ch.restaurant_name,
+        cityName: ch.city?.name ?? "Unknown city",
+        countryName: ch.city?.country?.name ?? null,
+        lat,
+        lng,
+      };
+    })
+    .filter(Boolean) as MapPoint[];
 
   const selectedCountryName = countryId
     ? safeCountries.find((c) => c.id === countryId)?.name ?? null
@@ -208,60 +206,15 @@ export default async function ChallengesPage({
     <main className="min-h-screen">
       <h1 className="text-4xl font-bold mb-4">🌍 All Food Challenges</h1>
 
-      <ChallengeFiltersV2
+      <ChallengesPageClient
         countries={safeCountries}
         maxTimeOptions={maxTimeOptions}
+        challenges={challenges}
+        points={points}
+        selectedCountryName={selectedCountryName}
+        cityId={cityId}
+        maxTime={maxTime}
       />
-
-      <ChallengesMapWrapper points={points} />
-
-      <p className="text-gray-600 mb-6">
-        Filters:{" "}
-        {selectedCountryName ? (
-          <span className="mr-3">
-            <strong>Country</strong> = {selectedCountryName}
-          </span>
-        ) : (
-          <span className="mr-3">Country = any</span>
-        )}
-        {cityId ? (
-          <span className="mr-3">
-            <strong>City</strong> = selected
-          </span>
-        ) : (
-          <span className="mr-3">City = any</span>
-        )}
-        {maxTime !== null && !Number.isNaN(maxTime) ? (
-          <span>
-            <strong>Max time</strong> = {maxTime} min
-          </span>
-        ) : (
-          <span>Max time = any</span>
-        )}
-      </p>
-
-      {challenges.length === 0 ? (
-        <p className="text-gray-600">No challenges found for these filters.</p>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-3">
-          {challenges.map((ch) => {
-            const cityName = ch.city?.name ?? "Unknown city";
-            const countryName = ch.city?.country?.name ?? null;
-
-            return (
-              <ChallengeCard
-                key={ch.id}
-                id={ch.id}
-                name={ch.name}
-                city={cityName}
-                country={countryName}
-                timeLimitMinutes={ch.time_limit_minutes}
-                restaurantName={ch.restaurant_name}
-              />
-            );
-          })}
-        </div>
-      )}
     </main>
   );
 }
