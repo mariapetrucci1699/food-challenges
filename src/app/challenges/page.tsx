@@ -176,7 +176,36 @@ export default async function ChallengesPage({
     );
   }
 
-  const challenges = (data ?? []) as ChallengeRow[];
+  const challenges: ChallengeRow[] = (data ?? []).map((row: any) => {
+  const city = Array.isArray(row.city) ? row.city[0] ?? null : row.city ?? null;
+  const country =
+    city && Array.isArray(city.country)
+      ? city.country[0] ?? null
+      : city?.country ?? null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    image_url: row.image_url ?? null,
+    restaurant_name: row.restaurant_name ?? null,
+    time_limit_minutes: row.time_limit_minutes ?? null,
+    status: row.status,
+    city: city
+      ? {
+          id: city.id,
+          name: city.name,
+          latitude: city.latitude ?? null,
+          longitude: city.longitude ?? null,
+          country: country
+            ? {
+                id: country.id,
+                name: country.name,
+              }
+            : null,
+        }
+      : null,
+  };
+});
 
   const points = challenges
     .map((ch) => {
